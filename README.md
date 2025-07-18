@@ -21,7 +21,7 @@ Start everything with Docker Compose:
 docker-compose up --build
 ```
 
-The compose file launches Cassandra, CockroachDB, Kafka, ClickHouse and the three Go services. The ClickHouse table is created automatically with a TTL so expired events are purged without extra maintenance.
+The compose file launches Cassandra, CockroachDB, Kafka, ClickHouse and the three Go services. The ClickHouse table is created automatically with a TTL so expired events are purged without extra maintenance. The services expect a ClickHouse database named `logs`, so create it manually when running outside of Docker Compose.
 
 ## Sending a log event
 
