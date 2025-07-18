@@ -42,6 +42,7 @@ func NewServer() *Server {
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", s.login)
+	mux.HandleFunc("/register", s.register)
 	mux.HandleFunc("/projects", s.auth(s.projects))
 	mux.HandleFunc("/projects/new", s.auth(s.newProject))
 	mux.HandleFunc("/events", s.auth(s.events))
@@ -63,6 +64,25 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, &http.Cookie{Name: "user", Value: user, Path: "/", HttpOnly: true})
 		http.Redirect(w, r, "/projects", http.StatusSeeOther)
+	}
+}
+
+func (s *Server) register(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		_ = s.tpl.ExecuteTemplate(w, "register.html", nil)
+	case http.MethodPost:
+		user := r.FormValue("username")
+		pass := r.FormValue("password")
+		if user == "" || pass == "" {
+			http.Error(w, "missing fields", http.StatusBadRequest)
+			return
+		}
+		if err := s.ck.CreateUser(r.Context(), user, pass); err != nil {
+			http.Error(w, "could not create user", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
 }
 
@@ -92,7 +112,11 @@ func (s *Server) newProject(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	project := r.URL.Query().Get("project")
-	prj, _ := s.cass.GetProject(r.Context(), project)
+	prj, err := s.cass.GetProject(r.Context(), project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	for _, k := range prj.SearchKeys {
 		if v := r.URL.Query().Get(k); v != "" {
@@ -122,7 +146,11 @@ func (s *Server) eventDetail(w http.ResponseWriter, r *http.Request) {
 	project := r.URL.Query().Get("project")
 	name := r.URL.Query().Get("name")
 	index, _ := strconv.Atoi(r.URL.Query().Get("index"))
-	prj, _ := s.cass.GetProject(r.Context(), project)
+	prj, err := s.cass.GetProject(r.Context(), project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	for _, k := range prj.SearchKeys {
 		if v := r.URL.Query().Get(k); v != "" {
