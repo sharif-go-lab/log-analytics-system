@@ -1,0 +1,9 @@
+<html><body>
+<h1>Projects</h1>
+<a href="/projects/new">New Project</a>
+<ul>
+{{range .}}
+<li><a href="/events?project={{.ID}}">{{.ID}}</a></li>
+{{end}}
+</ul>
+</body></html>

@@ -1,0 +1,6 @@
+flowchart TD
+    A[ingestion] -->|Kafka| B[processor]
+    B --> C[ClickHouse]
+    A --> D[CockroachDB]
+    A --> E[Cassandra]
+    C --> F[query]
