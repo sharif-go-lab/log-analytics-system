@@ -9,7 +9,7 @@ services:
 
   cockroach:
     image: cockroachdb/cockroach:latest
-    command: /query
+    command: start-single-node --insecure
     ports:
       - "26257:26257"
       - "8081:8080"
