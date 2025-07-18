@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
+	"regexp"
 	"time"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
@@ -14,6 +16,8 @@ import (
 type Conn struct {
 	*sql.DB
 }
+
+var allowedKey = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
 // New creates a new ClickHouse connection.
 func New(dsn string) *Conn {
@@ -66,6 +70,9 @@ func (c *Conn) QueryCounts(ctx context.Context, project string, filters map[stri
 	query := `SELECT name, count(), max(timestamp) FROM events WHERE project_id = ? AND expire_at > ?`
 	args := []interface{}{project, now}
 	for k, v := range filters {
+		if !allowedKey.MatchString(k) {
+			return nil, errors.New("invalid filter key")
+		}
 		query += " AND JSONExtractString(fields, '" + k + "') = ?"
 		args = append(args, v)
 	}
@@ -103,6 +110,9 @@ func (c *Conn) QueryEvents(ctx context.Context, project, name string, filters ma
 		args = append(args, name)
 	}
 	for k, v := range filters {
+		if !allowedKey.MatchString(k) {
+			return nil, errors.New("invalid filter key")
+		}
 		query += " AND JSONExtractString(fields, '" + k + "') = ?"
 		args = append(args, v)
 	}

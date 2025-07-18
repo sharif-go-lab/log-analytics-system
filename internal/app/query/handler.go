@@ -17,8 +17,8 @@ type Handler struct {
 }
 
 // NewHandler initializes a query handler.
-func NewHandler(chConn *ch.Conn, cass *cassandra.Session) *Handler {
-	return &Handler{ch: chConn, cass: cass}
+func NewHandler(chConn *ch.Conn, c *cassandra.Session) *Handler {
+	return &Handler{ch: chConn, cass: c}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -27,27 +27,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing project", http.StatusBadRequest)
 		return
 	}
-	ctx := context.Background()
-	proj, err := h.cass.GetProject(ctx, project)
-	if err != nil {
-		http.Error(w, "project not found", http.StatusNotFound)
-		return
-	}
+	ctx := r.Context()
+	proj, _ := h.cass.GetProject(ctx, project)
 	filters := map[string]string{}
+	allowed := map[string]struct{}{}
+	for _, k := range proj.SearchKeys {
+		allowed[k] = struct{}{}
+	}
 	for k := range r.URL.Query() {
-		if k != "project" && k != "name" && k != "limit" && k != "offset" {
-			allowed := false
-			for _, a := range proj.SearchKeys {
-				if k == a {
-					allowed = true
-					break
-				}
+		if k != "project" && k != "name" && k != "limit" {
+			if _, ok := allowed[k]; ok {
+				filters[k] = r.URL.Query().Get(k)
 			}
-			if !allowed {
-				http.Error(w, "invalid filter", http.StatusBadRequest)
-				return
-			}
-			filters[k] = r.URL.Query().Get(k)
 		}
 	}
 	if r.URL.Path == "/events" {
@@ -56,8 +47,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if limit == 0 {
 			limit = 10
 		}
-		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
-		events, err := h.ch.QueryEvents(ctx, project, name, filters, limit, offset)
+		events, err := h.ch.QueryEvents(ctx, project, name, filters, limit, 0)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

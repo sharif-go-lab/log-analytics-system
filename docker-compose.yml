@@ -66,10 +66,13 @@ services:
     command: /query
     environment:
       CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_KEYSPACE: logs
     ports:
       - "8082:8082"
     depends_on:
       - clickhouse
+      - cassandra
 
   processor:
     build:
@@ -84,5 +87,17 @@ services:
       - kafka
       - clickhouse
 
-volumes:
-  cockroach-data:
+  web:
+    build: .
+    command: /web
+    environment:
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_KEYSPACE: logs
+      COCKROACH_DSN: postgres://root@cockroach:26257/defaultdb?sslmode=disable
+      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+    ports:
+      - "8083:8083"
+    depends_on:
+      - cassandra
+      - cockroach
+      - clickhouse
