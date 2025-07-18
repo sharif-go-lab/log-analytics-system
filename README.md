@@ -3,7 +3,7 @@
 This repository provides a small demo of a scalable log analytics platform written in Go. The system combines the following components:
 
 - **Cassandra** – keeps project metadata such as API keys and TTL values.
-- **CockroachDB** – stores user accounts (not fully implemented).
+- **CockroachDB** – stores user accounts.
 - **Kafka** – receives log events from the ingestion API.
 - **ClickHouse** – persists log events for querying.
 
@@ -48,7 +48,7 @@ These examples assume corresponding project data already exists in Cassandra.
 
 ## Web interface
 
-Open [http://localhost:8083/login](http://localhost:8083/login) to log in. The default credentials are `admin` / `admin`. After login you can create projects at `/projects/new`; the generated API key will be shown after creation. Use the project list to browse events without using curl.
+Open [http://localhost:8083/login](http://localhost:8083/login) to log in. The default credentials are `admin` / `admin` (created automatically). New users can sign up at `/register`; passwords are hashed using bcrypt. After login you can create projects at `/projects/new`; the generated API key will be shown after creation. Use the project list to browse events without using curl.
 
 ## Environment variables
 

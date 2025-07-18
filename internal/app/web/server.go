@@ -112,7 +112,11 @@ func (s *Server) newProject(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	project := r.URL.Query().Get("project")
-	prj, _ := s.cass.GetProject(r.Context(), project)
+	prj, err := s.cass.GetProject(r.Context(), project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	for _, k := range prj.SearchKeys {
 		if v := r.URL.Query().Get(k); v != "" {
@@ -142,7 +146,11 @@ func (s *Server) eventDetail(w http.ResponseWriter, r *http.Request) {
 	project := r.URL.Query().Get("project")
 	name := r.URL.Query().Get("name")
 	index, _ := strconv.Atoi(r.URL.Query().Get("index"))
-	prj, _ := s.cass.GetProject(r.Context(), project)
+	prj, err := s.cass.GetProject(r.Context(), project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	for _, k := range prj.SearchKeys {
 		if v := r.URL.Query().Get(k); v != "" {
