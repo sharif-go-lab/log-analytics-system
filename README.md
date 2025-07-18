@@ -30,8 +30,11 @@ The Go application exposes HTTP endpoints for:
   that must be used when pushing logs.
 - `/log` – submit a log message for a project. The message is put on Kafka and
   later stored in Cassandra (with TTL) and ClickHouse.
-- `/projects/{id}/events` – query recent events for a project from ClickHouse.
-- `/projects/{id}/events/{name}` – fetch the latest event of a given name.
+ - `/projects/{id}/events` – list event names with their last timestamp and count.
+   You can filter by the project's searchable keys via query parameters and by
+   event name using the `name` parameter.
+ - `/projects/{id}/events/{name}` – fetch details of an event. Supply `ts` and
+   `dir=next|prev` to move between events chronologically.
 
 Logs are produced to Kafka and a background consumer moves them into Cassandra
 (for short term storage with TTL) and ClickHouse (for analytics).

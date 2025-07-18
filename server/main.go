@@ -13,6 +13,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 )
@@ -272,29 +273,46 @@ func (a *App) login(c *gin.Context) {
 func (a *App) searchEvents(c *gin.Context) {
 	projectID := c.Param("id")
 	name := c.Query("name")
-	query := `SELECT name, timestamp, data FROM events WHERE project_id=?`
+
+	// fetch searchable keys of project
+	var keys []string
+	if err := a.cockroach.QueryRow(c.Request.Context(), `SELECT search_keys FROM projects WHERE id=$1`, projectID).Scan(pgx.Array(&keys)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project"})
+		return
+	}
+
+	query := "SELECT name, max(timestamp) as last, count() FROM events WHERE project_id=?"
 	var args []interface{}
 	args = append(args, projectID)
 	if name != "" {
 		query += " AND name=?"
 		args = append(args, name)
 	}
-	query += " ORDER BY timestamp DESC LIMIT 100"
+	for _, k := range keys {
+		if v := c.Query(k); v != "" {
+			// filter on searchable key using JSON extraction
+			query += " AND JSONExtractString(data, '" + k + "') = ?"
+			args = append(args, v)
+		}
+	}
+	query += " GROUP BY name ORDER BY last DESC LIMIT 100"
+
 	rows, err := a.clickhouse.Query(c.Request.Context(), query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	defer rows.Close()
+
 	type row struct {
-		Name      string    `json:"name"`
-		Timestamp time.Time `json:"timestamp"`
-		Data      string    `json:"data"`
+		Name  string    `json:"name"`
+		Last  time.Time `json:"last"`
+		Count uint64    `json:"count"`
 	}
 	var out []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.Name, &r.Timestamp, &r.Data); err != nil {
+		if err := rows.Scan(&r.Name, &r.Last, &r.Count); err != nil {
 			continue
 		}
 		out = append(out, r)
@@ -305,7 +323,26 @@ func (a *App) searchEvents(c *gin.Context) {
 func (a *App) eventDetail(c *gin.Context) {
 	projectID := c.Param("id")
 	name := c.Param("name")
-	row := a.clickhouse.QueryRow(c.Request.Context(), `SELECT name, timestamp, data FROM events WHERE project_id=? AND name=? ORDER BY timestamp DESC LIMIT 1`, projectID, name)
+	tsStr := c.Query("ts")
+	dir := c.DefaultQuery("dir", "")
+	ctx := c.Request.Context()
+
+	query := `SELECT name, timestamp, data FROM events WHERE project_id=? AND name=? ORDER BY timestamp DESC LIMIT 1`
+	args := []interface{}{projectID, name}
+
+	if tsStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, tsStr); err == nil {
+			if dir == "prev" {
+				query = `SELECT name, timestamp, data FROM events WHERE project_id=? AND name=? AND timestamp < ? ORDER BY timestamp DESC LIMIT 1`
+				args = append(args, t)
+			} else if dir == "next" {
+				query = `SELECT name, timestamp, data FROM events WHERE project_id=? AND name=? AND timestamp > ? ORDER BY timestamp ASC LIMIT 1`
+				args = append(args, t)
+			}
+		}
+	}
+
+	row := a.clickhouse.QueryRow(ctx, query, args...)
 	var r struct {
 		Name      string    `json:"name"`
 		Timestamp time.Time `json:"timestamp"`
