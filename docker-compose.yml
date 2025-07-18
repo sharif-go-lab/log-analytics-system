@@ -1,0 +1,88 @@
+version: '3.8'
+services:
+  cassandra:
+    image: cassandra:latest
+    environment:
+      - CASSANDRA_START_RPC=true
+    ports:
+      - "9042:9042"
+
+  cockroach:
+    image: cockroachdb/cockroach:latest
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+      - "8081:8080"
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+  ingestion:
+    build: .
+    environment:
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_KEYSPACE: logs
+      COCKROACH_DSN: postgres://root@cockroach:26257/defaultdb?sslmode=disable
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: logs
+      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+    ports:
+      - "8080:8080"
+    depends_on:
+      - cassandra
+      - cockroach
+      - kafka
+      - clickhouse
+
+  query:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /query
+    environment:
+      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+    ports:
+      - "8082:8082"
+    depends_on:
+      - clickhouse
+
+  processor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /processor
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: logs
+      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+    depends_on:
+      - kafka
+      - clickhouse
+
+volumes:
+  cockroach-data:
