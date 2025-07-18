@@ -2,7 +2,7 @@
 
 This repository provides a small demo of a scalable log analytics platform written in Go. The system combines the following components:
 
-- **Cassandra** – keeps project metadata such as API keys and TTL values.
+ - **Cassandra** – keeps project metadata such as API keys, TTL values and the list of allowed search keys.
 - **CockroachDB** – stores user accounts (not fully implemented).
 - **Kafka** – receives log events from the ingestion API.
 - **ClickHouse** – persists log events for querying.
@@ -38,10 +38,13 @@ curl 'http://localhost:8082?project=proj1'
 To list recent events of a specific name and filter by field values:
 
 ```sh
-curl 'http://localhost:8082/events?project=proj1&name=test&user=alice&limit=5'
+curl 'http://localhost:8082/events?project=proj1&name=test&user=alice&limit=5&offset=0'
 ```
+The optional `offset` parameter allows paginating through results when combined with `limit`.
 
 These examples assume corresponding project data already exists in Cassandra.
+Each project also defines a list of `search_keys`. Only fields listed there may
+be sent in events and used as query filters.
 
 ## Generating test data
 

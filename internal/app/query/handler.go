@@ -6,17 +6,19 @@ import (
 	"net/http"
 	"strconv"
 
+	"log-analytics-system/internal/db/cassandra"
 	ch "log-analytics-system/internal/db/clickhouse"
 )
 
 // Handler provides query endpoints for events.
 type Handler struct {
-	ch *ch.Conn
+	ch   *ch.Conn
+	cass *cassandra.Session
 }
 
 // NewHandler initializes a query handler.
-func NewHandler(chConn *ch.Conn) *Handler {
-	return &Handler{ch: chConn}
+func NewHandler(chConn *ch.Conn, cass *cassandra.Session) *Handler {
+	return &Handler{ch: chConn, cass: cass}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -26,9 +28,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.Background()
+	proj, err := h.cass.GetProject(ctx, project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	for k := range r.URL.Query() {
-		if k != "project" && k != "name" && k != "limit" {
+		if k != "project" && k != "name" && k != "limit" && k != "offset" {
+			allowed := false
+			for _, a := range proj.SearchKeys {
+				if k == a {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				http.Error(w, "invalid filter", http.StatusBadRequest)
+				return
+			}
 			filters[k] = r.URL.Query().Get(k)
 		}
 	}
@@ -38,7 +56,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if limit == 0 {
 			limit = 10
 		}
-		events, err := h.ch.QueryEvents(ctx, project, name, filters, limit, 0)
+		offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+		events, err := h.ch.QueryEvents(ctx, project, name, filters, limit, offset)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
