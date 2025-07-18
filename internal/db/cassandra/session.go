@@ -37,6 +37,8 @@ func (s *Session) InitSchema(ctx context.Context) error {
 	return s.Query(`CREATE TABLE IF NOT EXISTS projects (
         id text PRIMARY KEY,
         api_key text,
-        ttl int
+        ttl int,
+        owner text,
+        search_keys set<text>
     )`).WithContext(ctx).Exec()
 }

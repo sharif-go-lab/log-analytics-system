@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"log-analytics-system/internal/db/cassandra"
@@ -30,12 +31,13 @@ type Handler struct {
 
 // NewHandler creates a new Handler with real connections.
 func NewHandler() http.Handler {
-        prod := kafka.NewProducer([]string{os.Getenv("KAFKA_BROKERS")}, os.Getenv("KAFKA_TOPIC"))
-        ck := ckdb.New(os.Getenv("COCKROACH_DSN"))
-        ck.InitSchema(context.Background())
-        cass := cassandra.New([]string{os.Getenv("CASSANDRA_HOST")}, os.Getenv("CASSANDRA_KEYSPACE"))
-        cass.InitSchema(context.Background())
-        return &Handler{producer: prod, cockroach: ck, cass: cass}
+	brokers := strings.Split(os.Getenv("KAFKA_BROKERS"), ",")
+	prod := kafka.NewProducer(brokers, os.Getenv("KAFKA_TOPIC"))
+	ck := ckdb.New(os.Getenv("COCKROACH_DSN"))
+	ck.InitSchema(context.Background())
+	cass := cassandra.New([]string{os.Getenv("CASSANDRA_HOST")}, os.Getenv("CASSANDRA_KEYSPACE"))
+	cass.InitSchema(context.Background())
+	return &Handler{producer: prod, cockroach: ck, cass: cass}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

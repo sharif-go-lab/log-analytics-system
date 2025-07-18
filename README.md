@@ -30,6 +30,8 @@ The compose file launches Cassandra, CockroachDB, Kafka, ClickHouse and the four
 curl -XPOST -d '{"project_id":"proj1","api_key":"k","name":"test","timestamp":"2024-01-01T00:00:00Z","fields":{"k":"v"}}' http://localhost:8080/
 ```
 
+Multiple Kafka brokers can be specified via `KAFKA_BROKERS`, e.g. `broker1:9092,broker2:9092`.
+
 ## Querying counts
 
 ```sh

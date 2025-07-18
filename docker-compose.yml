@@ -64,10 +64,13 @@ services:
     command: /query
     environment:
       CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CASSANDRA_HOST: cassandra
+      CASSANDRA_KEYSPACE: logs
     ports:
       - "8082:8082"
     depends_on:
       - clickhouse
+      - cassandra
 
   processor:
     build:

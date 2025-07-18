@@ -1,8 +1,16 @@
 <html><body>
-<h1>Events</h1>
-<ul>
-{{range .}}
-<li>{{.Name}} at {{.Timestamp}}</li>
+<h1>Events for {{.Project}}</h1>
+<form method="get">
+<input type="hidden" name="project" value="{{.Project}}" />
+{{range .Keys}}
+<input name="{{.}}" value="{{index $.Values .}}" placeholder="{{.}}" />
 {{end}}
-</ul>
+<button type="submit">Search</button>
+</form>
+<table>
+<tr><th>Name</th><th>Count</th><th>Last</th></tr>
+{{range .Counts}}
+<tr><td><a href="/event?project={{$.Project}}&name={{.Name}}{{$.FilterQ}}">{{.Name}}</a></td><td>{{.Count}}</td><td>{{.Last}}</td></tr>
+{{end}}
+</table>
 </body></html>

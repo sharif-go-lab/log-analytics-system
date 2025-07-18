@@ -34,10 +34,12 @@ flowchart TD
 CREATE TABLE projects (
     id text PRIMARY KEY,
     api_key text,
-    ttl int
+    ttl int,
+    owner text,
+    search_keys set<text>
 ) WITH replication = {
     'class': 'SimpleStrategy',
-    'replication_factor': 3
+    'replication_factor': 1
 };
 ```
 

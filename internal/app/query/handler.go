@@ -6,17 +6,19 @@ import (
 	"net/http"
 	"strconv"
 
+	"log-analytics-system/internal/db/cassandra"
 	ch "log-analytics-system/internal/db/clickhouse"
 )
 
 // Handler provides query endpoints for events.
 type Handler struct {
-	ch *ch.Conn
+	ch   *ch.Conn
+	cass *cassandra.Session
 }
 
 // NewHandler initializes a query handler.
-func NewHandler(chConn *ch.Conn) *Handler {
-	return &Handler{ch: chConn}
+func NewHandler(chConn *ch.Conn, c *cassandra.Session) *Handler {
+	return &Handler{ch: chConn, cass: c}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -25,11 +27,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing project", http.StatusBadRequest)
 		return
 	}
-	ctx := context.Background()
+	ctx := r.Context()
+	proj, _ := h.cass.GetProject(ctx, project)
 	filters := map[string]string{}
+	allowed := map[string]struct{}{}
+	for _, k := range proj.SearchKeys {
+		allowed[k] = struct{}{}
+	}
 	for k := range r.URL.Query() {
 		if k != "project" && k != "name" && k != "limit" {
-			filters[k] = r.URL.Query().Get(k)
+			if _, ok := allowed[k]; ok {
+				filters[k] = r.URL.Query().Get(k)
+			}
 		}
 	}
 	if r.URL.Path == "/events" {
