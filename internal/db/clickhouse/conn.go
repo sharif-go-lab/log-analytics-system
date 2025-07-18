@@ -26,6 +26,9 @@ func New(dsn string) *Conn {
 
 // InitSchema ensures the events table exists.
 func (c *Conn) InitSchema(ctx context.Context) error {
+	if _, err := c.ExecContext(ctx, `CREATE DATABASE IF NOT EXISTS logs`); err != nil {
+		return err
+	}
 	_, err := c.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS events (
     project_id String,
