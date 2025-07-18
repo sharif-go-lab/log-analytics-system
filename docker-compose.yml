@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   cassandra:
     image: cassandra:latest
@@ -101,3 +100,6 @@ services:
       - cassandra
       - cockroach
       - clickhouse
+
+volumes:
+  cockroach-data:
