@@ -49,3 +49,27 @@ These examples assume corresponding project data already exists in Cassandra.
 ## Web interface
 
 Open [http://localhost:8083/login](http://localhost:8083/login) to log in. The default credentials are `admin` / `admin`. After login you can create projects at `/projects/new`; the generated API key will be shown after creation. Use the project list to browse events without using curl.
+
+## Environment variables
+
+Each service uses environment variables for its configuration. The values in `docker-compose.yml` provide defaults for local development.
+
+| Variable | Purpose |
+| --- | --- |
+| `CASSANDRA_HOST` / `CASSANDRA_KEYSPACE` | Location and keyspace for Cassandra storing project metadata |
+| `CLICKHOUSE_DSN` | DSN for ClickHouse used by processor, query and web services |
+| `COCKROACH_DSN` | DSN for CockroachDB used by ingestion and web services |
+| `KAFKA_BROKERS` | Comma separated list of Kafka brokers |
+| `KAFKA_TOPIC` | Kafka topic where events are published |
+
+Refer to `docker-compose.yml` for the default values used during development.
+
+## Sample event generator
+
+A small CLI located in `cmd/generator` can continuously send random events for testing:
+
+```sh
+go run ./cmd/generator
+```
+
+`INGEST_URL` controls the ingestion endpoint, while `PROJECT_ID` and `API_KEY` specify the project credentials.

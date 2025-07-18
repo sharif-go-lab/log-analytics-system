@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"log-analytics-system/internal/app/processor"
@@ -17,7 +18,8 @@ func main() {
 	if err := ch.InitSchema(context.Background()); err != nil {
 		log.Fatalf("clickhouse init error: %v", err)
 	}
-	cons := kafka.NewConsumer([]string{os.Getenv("KAFKA_BROKERS")}, os.Getenv("KAFKA_TOPIC"), "processor")
+	brokers := strings.Split(os.Getenv("KAFKA_BROKERS"), ",")
+	cons := kafka.NewConsumer(brokers, os.Getenv("KAFKA_TOPIC"), "processor")
 	proc := processor.New(cons, ch)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

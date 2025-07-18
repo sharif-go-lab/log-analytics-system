@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Conn wraps the cockroach db connection.
@@ -47,9 +48,28 @@ func (c *Conn) InsertAudit(ctx context.Context, projectID, name string, ts time.
 
 // CheckUser verifies username/password.
 func (c *Conn) CheckUser(ctx context.Context, user, pass string) (bool, error) {
-	var count int
-	err := c.QueryRowContext(ctx, `SELECT count(*) FROM users WHERE username=$1 AND password=$2`, user, pass).Scan(&count)
-	return count == 1, err
+	var hash string
+	err := c.QueryRowContext(ctx, `SELECT password FROM users WHERE username=$1`, user).Scan(&hash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass)) != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// CreateUser registers a new user with hashed password.
+func (c *Conn) CreateUser(ctx context.Context, user, pass string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = c.ExecContext(ctx, `INSERT INTO users(username, password) VALUES ($1,$2)`, user, string(hash))
+	return err
 }
 
 // EnsureUser inserts a user if it does not already exist.
@@ -59,8 +79,7 @@ func (c *Conn) EnsureUser(ctx context.Context, user, pass string) error {
 		return err
 	}
 	if count == 0 {
-		_, err := c.ExecContext(ctx, `INSERT INTO users(username, password) VALUES ($1,$2)`, user, pass)
-		return err
+		return c.CreateUser(ctx, user, pass)
 	}
 	return nil
 }

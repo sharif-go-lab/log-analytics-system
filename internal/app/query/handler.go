@@ -28,7 +28,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	proj, _ := h.cass.GetProject(ctx, project)
+	proj, err := h.cass.GetProject(ctx, project)
+	if err != nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
 	filters := map[string]string{}
 	allowed := map[string]struct{}{}
 	for _, k := range proj.SearchKeys {
