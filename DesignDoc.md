@@ -78,12 +78,14 @@ flowchart TD
 CREATE TABLE projects (
     id text PRIMARY KEY,
     api_key text,
-    ttl int
+    ttl int,
+    search_keys list<text>
 ) WITH replication = {
     'class': 'SimpleStrategy',
     'replication_factor': 3
 };
 ```
+ستون `search_keys` لیستی از کلیدهای مجاز برای جستجو است. سرویس ingestion تنها رویدادهایی را قبول می‌کند که فیلدهای آن جزو این لیست باشند و سرویس query نیز قبل از اعمال فیلترها آن‌ها را با این لیست مقایسه می‌کند.
 
 ### CockroachDB (audit)
 ```

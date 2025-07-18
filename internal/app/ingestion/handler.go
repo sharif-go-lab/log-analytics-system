@@ -33,6 +33,7 @@ func NewHandler() http.Handler {
 	prod := kafka.NewProducer([]string{os.Getenv("KAFKA_BROKERS")}, os.Getenv("KAFKA_TOPIC"))
 	ck := ckdb.New(os.Getenv("COCKROACH_DSN"))
 	cass := cassandra.New([]string{os.Getenv("CASSANDRA_HOST")}, os.Getenv("CASSANDRA_KEYSPACE"))
+	_ = cass.InitSchema(context.Background())
 	return &Handler{producer: prod, cockroach: ck, cass: cass}
 }
 
@@ -52,6 +53,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil || proj.APIKey != ev.APIKey {
 		http.Error(w, "invalid project", http.StatusUnauthorized)
 		return
+	}
+	for k := range ev.Fields {
+		allowed := false
+		for _, a := range proj.SearchKeys {
+			if k == a {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			http.Error(w, "invalid field key", http.StatusBadRequest)
+			return
+		}
 	}
 	expire := ev.Timestamp.Add(time.Duration(proj.TTL) * time.Second).Unix()
 	data, _ := json.Marshal(struct {
