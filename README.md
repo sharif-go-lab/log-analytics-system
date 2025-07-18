@@ -73,3 +73,4 @@ go run ./cmd/generator
 ```
 
 `INGEST_URL` controls the ingestion endpoint, while `PROJECT_ID` and `API_KEY` specify the project credentials.
+The generator runs indefinitely until you stop it, providing a steady stream of demo data.
