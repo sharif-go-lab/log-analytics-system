@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"time"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 )
@@ -23,14 +24,29 @@ func New(dsn string) *Conn {
 	return &Conn{db}
 }
 
+// InitSchema ensures the events table exists.
+func (c *Conn) InitSchema(ctx context.Context) error {
+	_, err := c.ExecContext(ctx, `
+CREATE TABLE IF NOT EXISTS events (
+    project_id String,
+    name String,
+    timestamp Int64,
+    expire_at Int64,
+    fields String
+) ENGINE = MergeTree()
+PARTITION BY project_id
+ORDER BY (project_id, name, timestamp)
+TTL toDateTime(expire_at)`)
+	return err
+}
+
 // InsertEvent inserts an event record.
-func (c *Conn) InsertEvent(ctx context.Context, project, name string, ts int64, fields map[string]string) error {
-	// Flatten fields as JSON
+func (c *Conn) InsertEvent(ctx context.Context, project, name string, ts int64, expire int64, fields map[string]string) error {
 	data, err := json.Marshal(fields)
 	if err != nil {
 		return err
 	}
-	_, err = c.ExecContext(ctx, `INSERT INTO events (project_id, name, timestamp, fields) VALUES (?, ?, ?, ?)`, project, name, ts, string(data))
+	_, err = c.ExecContext(ctx, `INSERT INTO events (project_id, name, timestamp, expire_at, fields) VALUES (?, ?, ?, ?, ?)`, project, name, ts, expire, string(data))
 	return err
 }
 
@@ -43,8 +59,9 @@ type EventCount struct {
 
 // QueryCounts returns counts grouped by event name for a project.
 func (c *Conn) QueryCounts(ctx context.Context, project string, filters map[string]string) ([]EventCount, error) {
-	query := `SELECT name, count(), max(timestamp) FROM events WHERE project_id = ?`
-	args := []interface{}{project}
+	now := time.Now().Unix()
+	query := `SELECT name, count(), max(timestamp) FROM events WHERE project_id = ? AND expire_at > ?`
+	args := []interface{}{project, now}
 	for k, v := range filters {
 		query += " AND JSONExtractString(fields, '" + k + "') = ?"
 		args = append(args, v)
@@ -75,8 +92,9 @@ type Event struct {
 
 // QueryEvents returns events for a project and name with pagination.
 func (c *Conn) QueryEvents(ctx context.Context, project, name string, filters map[string]string, limit, offset int) ([]Event, error) {
-	query := `SELECT name, timestamp, fields FROM events WHERE project_id = ?`
-	args := []interface{}{project}
+	now := time.Now().Unix()
+	query := `SELECT name, timestamp, fields FROM events WHERE project_id = ? AND expire_at > ?`
+	args := []interface{}{project, now}
 	if name != "" {
 		query += " AND name = ?"
 		args = append(args, name)

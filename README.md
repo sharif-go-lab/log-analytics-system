@@ -11,7 +11,7 @@ Three Go services are available:
 
 1. **ingestion service** – accepts log events on port `8080` and publishes them to Kafka after validating the project API key in Cassandra. It also stores a small audit trail in CockroachDB.
 2. **processor service** – consumes the Kafka messages and writes them to ClickHouse for querying.
-3. **query service** – exposes endpoints on port `8082` to list event counts or retrieve event details filtered by arbitrary fields.
+3. **query service** – exposes endpoints on port `8082` to list event counts or retrieve event details filtered by arbitrary fields. Events expire automatically based on the TTL configured per project.
 
 ## Running the stack
 
@@ -21,7 +21,7 @@ Start everything with Docker Compose:
 docker-compose up --build
 ```
 
-The compose file launches Cassandra, CockroachDB, Kafka, ClickHouse and the three Go services.
+The compose file launches Cassandra, CockroachDB, Kafka, ClickHouse and the three Go services. The ClickHouse table is created automatically with a TTL so expired events are purged without extra maintenance.
 
 ## Sending a log event
 

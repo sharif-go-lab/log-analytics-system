@@ -1,19 +1,23 @@
 package main
 
 import (
-    "log"
-    "net/http"
-    "os"
+	"context"
+	"log"
+	"net/http"
+	"os"
 
-    chdb "log-analytics-system/internal/db/clickhouse"
-    "log-analytics-system/internal/app/query"
+	"log-analytics-system/internal/app/query"
+	chdb "log-analytics-system/internal/db/clickhouse"
 )
 
 func main() {
-    ch := chdb.New(os.Getenv("CLICKHOUSE_DSN"))
-    handler := query.NewHandler(ch)
-    log.Println("query service listening on :8082")
-    if err := http.ListenAndServe(":8082", handler); err != nil {
-        log.Fatal(err)
-    }
+	ch := chdb.New(os.Getenv("CLICKHOUSE_DSN"))
+	if err := ch.InitSchema(context.Background()); err != nil {
+		log.Fatalf("clickhouse init error: %v", err)
+	}
+	handler := query.NewHandler(ch)
+	log.Println("query service listening on :8082")
+	if err := http.ListenAndServe(":8082", handler); err != nil {
+		log.Fatal(err)
+	}
 }
