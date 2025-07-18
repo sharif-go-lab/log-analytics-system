@@ -42,3 +42,19 @@ curl 'http://localhost:8082/events?project=proj1&name=test&user=alice&limit=5'
 ```
 
 These examples assume corresponding project data already exists in Cassandra.
+
+## Generating test data
+
+A small generator is available to continuously send random events to the ingestion service. Run it with Go:
+
+```sh
+go run ./cmd/generator
+```
+
+The program sends events to `http://localhost:8080/` using project ID `proj1` and API key `k`. These values can be overridden using the `INGEST_URL`, `PROJECT_ID` and `API_KEY` environment variables:
+
+```sh
+INGEST_URL=http://localhost:8080/ PROJECT_ID=proj1 API_KEY=k go run ./cmd/generator
+```
+
+Make sure the chosen project exists in Cassandra before running the generator.
