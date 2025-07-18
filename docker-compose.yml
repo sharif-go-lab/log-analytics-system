@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  cassandra1:
+    image: cassandra:4.1
+    environment:
+      - CASSANDRA_CLUSTER_NAME=log-cluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_SEEDS=cassandra1,cassandra2,cassandra3
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra1-data:/var/lib/cassandra
+
+  cassandra2:
+    image: cassandra:4.1
+    environment:
+      - CASSANDRA_CLUSTER_NAME=log-cluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_SEEDS=cassandra1,cassandra2,cassandra3
+    depends_on:
+      - cassandra1
+    volumes:
+      - cassandra2-data:/var/lib/cassandra
+
+  cassandra3:
+    image: cassandra:4.1
+    environment:
+      - CASSANDRA_CLUSTER_NAME=log-cluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_SEEDS=cassandra1,cassandra2,cassandra3
+    depends_on:
+      - cassandra1
+    volumes:
+      - cassandra3-data:/var/lib/cassandra
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka1:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
+    ports:
+      - "9092:9092"
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093
+    ports:
+      - "9093:9092"
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094
+    ports:
+      - "9094:9092"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+  cockroach1:
+    image: cockroachdb/cockroach:v23.1.11
+    command: start --insecure --join=cockroach1,cockroach2,cockroach3
+    volumes:
+      - cockroach1-data:/cockroach/cockroach-data
+    ports:
+      - "26257:26257"
+      - "8080:8080"
+
+  cockroach2:
+    image: cockroachdb/cockroach:v23.1.11
+    command: start --insecure --join=cockroach1,cockroach2,cockroach3
+    volumes:
+      - cockroach2-data:/cockroach/cockroach-data
+    depends_on:
+      - cockroach1
+
+  cockroach3:
+    image: cockroachdb/cockroach:v23.1.11
+    command: start --insecure --join=cockroach1,cockroach2,cockroach3
+    volumes:
+      - cockroach3-data:/cockroach/cockroach-data
+    depends_on:
+      - cockroach1
+
+  app:
+    build: ./server
+    depends_on:
+      - cassandra1
+      - kafka1
+      - clickhouse
+      - cockroach1
+    ports:
+      - "8081:8081"
+
+volumes:
+  cockroach1-data:
+  cockroach2-data:
+  cockroach3-data:
+  cassandra1-data:
+  cassandra2-data:
+  cassandra3-data:
+
