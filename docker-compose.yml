@@ -24,7 +24,7 @@ services:
       - "2181:2181"
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.3
     depends_on:
       - zookeeper
     environment:
@@ -37,6 +37,11 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_USER: username
+      CLICKHOUSE_PASSWORD: password
+    volumes:
+      - ./clickhouse-init:/docker-entrypoint-initdb.d
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -49,7 +54,7 @@ services:
       COCKROACH_DSN: postgres://root@cockroach:26257/defaultdb?sslmode=disable
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: logs
-      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CLICKHOUSE_DSN: tcp://username:password@clickhouse:9000?database=logs
     ports:
       - "8080:8080"
     depends_on:
@@ -64,7 +69,7 @@ services:
       dockerfile: Dockerfile
     command: /query
     environment:
-      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CLICKHOUSE_DSN: tcp://username:password@clickhouse:9000?database=logs
       CASSANDRA_HOST: cassandra
       CASSANDRA_KEYSPACE: logs
     ports:
@@ -81,7 +86,7 @@ services:
     environment:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: logs
-      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CLICKHOUSE_DSN: tcp://username:password@clickhouse:9000?database=logs
     depends_on:
       - kafka
       - clickhouse
@@ -93,7 +98,7 @@ services:
       CASSANDRA_HOST: cassandra
       CASSANDRA_KEYSPACE: logs
       COCKROACH_DSN: postgres://root@cockroach:26257/defaultdb?sslmode=disable
-      CLICKHOUSE_DSN: tcp://clickhouse:9000?database=logs
+      CLICKHOUSE_DSN: tcp://username:password@clickhouse:9000?database=logs
     ports:
       - "8083:8083"
     depends_on:
