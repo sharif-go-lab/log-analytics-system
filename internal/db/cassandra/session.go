@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/gocql/gocql"
 	"log"
+	"time"
 )
 
 // Session wraps the gocql session.
@@ -14,7 +15,16 @@ type Session struct {
 // New creates a new Cassandra session.
 func New(hosts []string, keyspace string) *Session {
 	cluster := gocql.NewCluster(hosts...)
-	session, err := cluster.CreateSession()
+	var session *gocql.Session
+	var err error
+	for i := 0; i < 10; i++ {
+		session, err = cluster.CreateSession()
+		if err == nil {
+			break
+		}
+		log.Printf("cassandra connection failed: %v", err)
+		time.Sleep(3 * time.Second)
+	}
 	if err != nil {
 		log.Fatalf("failed to connect to cassandra: %v", err)
 	}
@@ -25,7 +35,14 @@ func New(hosts []string, keyspace string) *Session {
 	session.Close()
 
 	cluster.Keyspace = keyspace
-	session, err = cluster.CreateSession()
+	for i := 0; i < 10; i++ {
+		session, err = cluster.CreateSession()
+		if err == nil {
+			break
+		}
+		log.Printf("cassandra keyspace connection failed: %v", err)
+		time.Sleep(3 * time.Second)
+	}
 	if err != nil {
 		log.Fatalf("failed to connect to cassandra keyspace: %v", err)
 	}

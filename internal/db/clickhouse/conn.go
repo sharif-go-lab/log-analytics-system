@@ -25,6 +25,16 @@ func New(dsn string) *Conn {
 	if err != nil {
 		log.Fatalf("failed to connect to clickhouse: %v", err)
 	}
+	for i := 0; i < 10; i++ {
+		if err = db.Ping(); err == nil {
+			break
+		}
+		log.Printf("clickhouse ping failed: %v", err)
+		time.Sleep(3 * time.Second)
+	}
+	if err != nil {
+		log.Fatalf("failed to connect to clickhouse: %v", err)
+	}
 	return &Conn{db}
 }
 
