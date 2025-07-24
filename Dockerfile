@@ -11,4 +11,5 @@ COPY --from=builder /bin/ingestion /ingestion
 COPY --from=builder /bin/query /query
 COPY --from=builder /bin/processor /processor
 COPY --from=builder /bin/web /web
+COPY --from=builder /src/templates /templates
 CMD ["/ingestion"]

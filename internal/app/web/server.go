@@ -42,8 +42,9 @@ func NewServer() *Server {
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", s.login)
+	mux.HandleFunc("/logout", s.logout)
 	mux.HandleFunc("/register", s.register)
-	mux.HandleFunc("/projects", s.auth(s.projects))
+	mux.HandleFunc("/projects", s.projects)
 	mux.HandleFunc("/projects/new", s.auth(s.newProject))
 	mux.HandleFunc("/events", s.auth(s.events))
 	mux.HandleFunc("/event", s.auth(s.eventDetail))
@@ -67,6 +68,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: "user", Value: "", Path: "/", HttpOnly: true})
+	http.Redirect(w, r, "/projects", http.StatusSeeOther)
+}
+
 func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -87,9 +93,12 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) projects(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value("user").(string)
-	projs, _ := s.cass.ListProjects(r.Context(), user)
-	_ = s.tpl.ExecuteTemplate(w, "projects.html", projs)
+	user, ok := r.Context().Value("user").(string)
+	if !ok {
+		user = ""
+	}
+	projects, _ := s.cass.ListProjects(r.Context(), user)
+	_ = s.tpl.ExecuteTemplate(w, "projects.html", projects)
 }
 
 func (s *Server) newProject(w http.ResponseWriter, r *http.Request) {
