@@ -21,6 +21,16 @@ func New(dsn string) *Conn {
 	if err != nil {
 		log.Fatalf("failed to connect to cockroachdb: %v", err)
 	}
+	for i := 0; i < 10; i++ {
+		if err = db.Ping(); err == nil {
+			break
+		}
+		log.Printf("cockroach ping failed: %v", err)
+		time.Sleep(3 * time.Second)
+	}
+	if err != nil {
+		log.Fatalf("failed to connect to cockroachdb: %v", err)
+	}
 	return &Conn{db}
 }
 
