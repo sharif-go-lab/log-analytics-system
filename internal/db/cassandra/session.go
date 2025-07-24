@@ -17,7 +17,7 @@ func New(hosts []string, keyspace string) *Session {
 	cluster := gocql.NewCluster(hosts...)
 	var session *gocql.Session
 	var err error
-	for i := 0; i < 10; i++ {
+	for try := 0; try < 30; try++ {
 		session, err = cluster.CreateSession()
 		if err == nil {
 			break
@@ -35,7 +35,7 @@ func New(hosts []string, keyspace string) *Session {
 	session.Close()
 
 	cluster.Keyspace = keyspace
-	for i := 0; i < 10; i++ {
+	for try := 0; try < 30; try++ {
 		session, err = cluster.CreateSession()
 		if err == nil {
 			break
