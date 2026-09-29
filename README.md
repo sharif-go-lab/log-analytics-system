@@ -151,15 +151,6 @@ docs/diagram.mmd   architecture diagram
 Dockerfile         one image with all four service binaries
 ```
 
-## Limitations
-
-- The web UI's sign-in is a plain `user` cookie that holds the username. It isn't signed, so this is only suitable for a local demo.
-- `/projects` lists every project, not only the ones created by the signed-in user.
-- Ingestion answers `202` even if publishing to Kafka or writing the audit row fails. Those errors are only logged.
-- The processor inserts events into ClickHouse one row at a time.
-- Compose runs a single node of everything, and the Cassandra keyspace uses replication factor 1.
-- Timestamps are shown as Unix seconds in the API and the UI.
-
 ## Authors
 
 - [Kasra Siavashpour](https://github.com/kasra-sia)
